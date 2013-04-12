@@ -20,7 +20,7 @@ class FileReader(StreamReader):
         self._fobj = open(location, "rb")
 
     def getSector(self, id, len):
-        return SectorReader(self, _ReadSlice(self._fobj, id * 2048, len))
+        return SectorReader(self, _ReadSlice(self._fobj, id * 2048, len), len)
 
 class HttpReader(StreamReader):
     """Reading iso trough http connection."""
@@ -30,7 +30,7 @@ class HttpReader(StreamReader):
         opener = urllib.FancyURLopener()
         opener.http_error_206 = lambda *a, **k: None
         opener.addheader("Range", "bytes=%d-%d" % (start, start+length-1))
-        return opener.open(self.source)
+        return SectorReader(self, opener.open(self.source), len)
 
 class _ReadSlice(object):
     """A file-like object that draws source information from the seekable input file-like object."""

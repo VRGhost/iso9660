@@ -25,6 +25,7 @@ if __name__ == "__main__":
     print args
 
     reader = iso9660.ISO9660(args.target)
+    print reader.primary.pathTable
 
     if args.list:
         for el in reader.walk():
