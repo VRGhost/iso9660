@@ -7,15 +7,25 @@ class PVD(object):
 
         self._inputStream = inp = inputStream
 
+        # See http://users.telenet.be/it3.consultants.bvba/handouts/ISO9960.html
+        self.id = inp.unpackString(5)
+        self.version = inp.unpackByte()
+        inp.skip(1) # unused1
+        self.systemId = inp.unpackString(32)
+        self.volumeId = inp.unpackString(32)
+        inp.skip(8) # unused2
+        self.volumeSpaceSize = inp.unpackBoth('i')
+        inp.skip(32) # unused3
+
         inputs = (
             ("type_code", inp.unpackString(5)),
-            ("standard_identifier", inp.unpack('B')),
+            ("standard_identifier", inp.unpackByte()),
             (None, inp.unpackRaw(1)),                        #discard 1 byte
-            ("system_identifier", inp.unpackString(32)),
-            ("volume_identifier", inp.unpackString(32)),
-            (None, inp.unpackRaw(8)),                        #discard 8 bytes
-            ("volume_space_size", inp.unpackBoth('i')),
-            (None, inp.unpackRaw(32)),                       #discard 32 bytes
+            ("system_identifier", ),
+            ("volume_identifier", ),
+            (None, ,                        #discard 8 bytes
+            ("volume_space_size", ),
+            (None, ),                       #discard 32 bytes
             ("volume_set_size", inp.unpackBoth('h')),
             ("volume_seq_num", inp.unpackBoth('h')),
             ("logical_block_size", inp.unpackBoth('h')),
@@ -36,7 +46,7 @@ class PVD(object):
             ("volume_datetime_modified", inp.unpackVdDatetime()),
             ("volume_datetime_expires", inp.unpackVdDatetime()),
             ("volume_datetime_effective", inp.unpackVdDatetime()),
-            ("file_structure_version", inp.unpack('B')),
+            ("file_structure_version", inp.unpackByte()),
         )
         
         self._data = data = {}
@@ -68,14 +78,14 @@ class PathTable(object):
 
         while toRead > 0:
             p = {}
-            l1 = inp.unpack('B')
-            l2 = inp.unpack('B')
+            l1 = inp.unpackByte()
+            l2 = inp.unpackByte()
             p['ex_loc'] = inp.unpack('<I')
             p['parent'] = inp.unpack('<H')
             p['name']   = inp.unpackString(l1)
 
             if l1%2 == 1:
-                inp.unpack('B')
+                inp.unpackByte()
 
             data.append(p)
 

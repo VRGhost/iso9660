@@ -23,7 +23,11 @@ class SectorReader(object):
     def unpackDirDatetime(self):
         return self.unpackRaw(7) #TODO
 
+    def unpackByte(self):
+        return ord(self.unpackRaw(1))
+
     def unpack(self, structDef):
+        assert structDef != "B"
         if structDef[0] not in ('<','>'):
             structDef = '<' + structDef
 
@@ -35,6 +39,10 @@ class SectorReader(object):
             return out[0]
         else:
             return out
+
+    def skip(self, l):
+        # Just a shorthand
+        self.unpackRaw(l)
 
     def unpackRaw(self, l):
         return self.input.read(l)

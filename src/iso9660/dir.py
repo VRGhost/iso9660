@@ -77,27 +77,27 @@ class Dir(IsoRecord):
 
     @classmethod
     def _unpackRecord(cls, stream):
-        recordLen = stream.unpack('B')
+        recordLen = stream.unpackByte()
         totalRecordLen = recordLen + 1 # For the byte we had read above
 
         if recordLen == 0:
             return (totalRecordLen, None)
 
-        l1 = stream.unpack('B')
+        l1 = stream.unpackByte()
 
         d = {}
         d['ex_loc']               = stream.unpackBoth('I')
         d['ex_len']               = stream.unpackBoth('I')
         d['datetime']             = stream.unpackDirDatetime()
-        d['flags']                = stream.unpack('B')
-        d['interleave_unit_size'] = stream.unpack('B')
-        d['interleave_gap_size']  = stream.unpack('B')
+        d['flags']                = stream.unpackByte()
+        d['interleave_unit_size'] = stream.unpackByte()
+        d['interleave_gap_size']  = stream.unpackByte()
         d['volume_sequence']      = stream.unpackBoth('h')
 
-        nameLen = stream.unpack('B')
+        nameLen = stream.unpackByte()
         d['name'] = stream.unpackString(nameLen).split(';')[0].strip("\x00")
         if nameLen % 2 == 0:
-            stream.unpack('B')
+            stream.unpackByte()
 
         # Skip padding
         t = 34 + nameLen - (nameLen % 2)

@@ -12,7 +12,10 @@ from .pvd import PVD
 
 class ISO9660(object):
 
-    root = property(lambda s: s._pvd.rootDir)
+    # PVDs
+    bootRecord = primary = supplementary = volumePartitionDescriptor = None
+
+    root = property(lambda s: s.primary.rootDir)
 
     def __init__(self, dataSource):
         if isinstance(dataSource, basestring):
@@ -28,12 +31,23 @@ class ISO9660(object):
 
         ### Volume Descriptors
         sectorId = itertools.count(0x10)
-        typ = 42
-        while typ != 255:
+        while True:
             sector = self._ds.getSector(sectorId.next(), 2048)
-            typ = sector.unpack('B')
-            if typ == 1:
-                self._pvd = PVD(sector)
+            typ = sector.unpackByte()
+            if typ == 255:
+                # Type 255 is "Volume Descriptor Set Terminator"
+                break
+            pvd = PVD(sector)
+            if typ == 0:
+                self.bootRecord = pvd
+            elif typ == 1:
+                self.primary = pvd
+            elif typ == 2:
+                self.supplementary = pvd
+            elif typ == 3:
+                self.volumePartitionDescriptor = pvd
+            else:
+                 raise Exception("Unexpected PVD type {!r}".format(typ))
 
     def walk(self):
         """Recursively walk over all fs records in the ISO."""
