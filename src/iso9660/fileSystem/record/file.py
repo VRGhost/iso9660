@@ -4,12 +4,10 @@ class File(IsoRecord):
     """An ISO file."""
 
     def stream(self):
-        secId = self._data["ex_loc"]
-        secLen = self._data["ex_len"]
-        return self._inputStream.getSector(secId, secLen)
+        return self._inp.getSectorHeadBytes(*self.extent)
 
     def read(self):
         return self.stream().unpackRaw(len(self))
 
     def __len__(self):
-        return self._data["ex_len"]
+        return self._data.extent[1]

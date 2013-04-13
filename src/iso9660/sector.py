@@ -1,16 +1,26 @@
+import collections
 import struct
 import datetime
+import logging
+
+from . import exceptions
+
+Sector = collections.namedtuple("Sector", ["id", "length", "blockSize"])
+SectorPoint = collections.namedtuple("SectorPoint", ["sector", "byteOffset"])
 
 class SectorReader(object):
     """An iso sector."""
 
     _length = _read = 0
+    _pushedStr = ""
 
-    def __init__(self, parent, stream, len):
-        self.input = stream
-        self.getSector = parent.getSector
-        self._length = len
+    def __init__(self, stream, dataSource, id, len, blockSize):
+        assert len < 1000
+        self.stream = stream
+        self.input = dataSource
+        self.id = Sector(id=id, length=len, blockSize=blockSize)
         self._read = 0
+        self.setMaxBytes(len * blockSize)
 
     def unpack733(self):
         # 733 is "method 733" used in
@@ -33,9 +43,11 @@ class SectorReader(object):
         return self.unpackRaw(l).rstrip(' ')
 
     def unpackVdDatetime(self):
-        txt = self.unpackRaw(17)
-        print repr(txt)
-        return txt
+        txt = self.unpackRaw(17).strip()
+        if not txt:
+            return None
+        else:
+            raise NotImplementedError(txt)
 
     def unpackDirDatetime(self):
         (
@@ -69,16 +81,56 @@ class SectorReader(object):
         data = self.unpackRaw(size)
         return struct.unpack(structDef, data)
 
+    def skipZeroes(self):
+        start = self.tell()
+        spaceLeft = self.bytesLeft()
+        while spaceLeft > 0:
+            toRead = min(spaceLeft, 128)
+            read = self.unpackRaw(toRead)
+            spaceLeft -= len(read)
+            read = read.lstrip('\x00')
+            if read:
+                break
+        logging.debug("Skipped {} zero bytes.".format(self.tell() - start))
+        self._pushedStr = read + self._pushedStr
+
     def skip(self, l):
         # Just a shorthand
-        self.unpackRaw(l)
+        # Expecting for all skipped (reserved) bytes to be zero
+        out = self.unpackRaw(l)
+        if out.strip('\x00'):
+            logging.debug("Skipping non-empty data {!r}".format(out))
 
     def unpackRaw(self, l):
-        self._read += l
-        return self.input.read(l)
+        if self.tell() + l > self._length:
+            raise exceptions.EndOfSectorError()
+
+        out = self._pushedStr[:l]
+        self._pushedStr = self._pushedStr[l:]
+        toRead = l - len(out)
+        if toRead:
+            assert not self._pushedStr
+            out += self.input.read(toRead)
+            self._read += toRead
+        assert len(out) == l
+        return out
+
+    def getStream(self):
+        return self.stream
+
+    def getAbsolutePos(self):
+        return SectorPoint(sector=self.id, byteOffset=self.tell())
+
+    def setMaxBytes(self, val):
+        maxTheoreticalLen = self.id.length * self.id.blockSize
+        assert val <= maxTheoreticalLen
+        self._length = val
+
+    def bytesLeft(self):
+        return self._length - self.tell()
 
     def tell(self):
-        return self._read
-
-    def __len__(self):
-        return self._length - self._read
+        rv = self._read - len(self._pushedStr)
+        assert rv >= 0
+        assert rv <= self._length, (rv, self._length)
+        return rv

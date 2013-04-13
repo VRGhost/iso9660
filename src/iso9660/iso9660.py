@@ -8,6 +8,7 @@ except ImportError:
 
 from .exceptions import ISO9660IOError
 from .streamReaders import FileReader, HttpReader
+from .fileSystem import Index
 from . import volumeDescriptors as vd
 
 class ISO9660(object):
@@ -17,6 +18,9 @@ class ISO9660(object):
 
     root = property(lambda s: s.primary.rootDir)
     formatVersion = property(lambda s: s.primary.fileStructureVersion)
+    fs = property(lambda s: s._fsIndex)
+
+    _fsIndex = None
 
     def __init__(self, dataSource):
         if isinstance(dataSource, basestring):
@@ -28,12 +32,12 @@ class ISO9660(object):
                 raise Exception("Unknown data source {!r}".format(dataSource))
 
         self._ds = dataSource
-
+        self._fsIndex = Index(self)
 
         ### Volume Descriptors
         sectorId = itertools.count(0x10)
         while True:
-            sector = self._ds.getSector(sectorId.next(), 2048)
+            sector = self._ds.getSector(sectorId.next(), 1)
             typ = sector.unpackByte()
             if typ == 255:
                 # Type 255 is "Volume Descriptor Set Terminator"
@@ -41,14 +45,12 @@ class ISO9660(object):
             if typ == 0:
                 self.bootRecord = vd.Boot(sector)
             elif typ == 1:
-                self.primary = vd.Primary(sector)
+                self.primary = vd.Primary(self, sector)
             elif typ == 2:
                 # Supplementary volume descriptor
-                1/0
                 pass
             elif typ == 3:
                 # Volume Partition Descriptor
-                2/0
                 pass 
             else:
                  raise Exception("Unexpected PVD type {!r}".format(typ))
