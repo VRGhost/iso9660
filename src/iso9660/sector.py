@@ -43,11 +43,18 @@ class SectorReader(object):
         return self.unpackRaw(l).rstrip(' ')
 
     def unpackVdDatetime(self):
-        txt = self.unpackRaw(17).strip()
-        if not txt:
+        txt = self.unpackRaw(17)
+        if txt == ("0" * 16) + '\x00':
             return None
-        else:
-            raise NotImplementedError(txt)
+        dt = txt[:14]
+        gmtOffset = ord(txt[16]) - 48
+        gmtOffset = datetime.timedelta(minutes=gmtOffset * 15)
+        try:
+            dt = datetime.datetime.strptime(dt, r"%Y%m%d%H%M%S")
+        except ValueError:
+            logging.debug("Unable to parse {!r} as VdDatetime".format(txt))
+            return None
+        return dt + gmtOffset
 
     def unpackDirDatetime(self):
         (
@@ -84,6 +91,7 @@ class SectorReader(object):
     def skipZeroes(self):
         start = self.tell()
         spaceLeft = self.bytesLeft()
+        read = ""
         while spaceLeft > 0:
             toRead = min(spaceLeft, 128)
             read = self.unpackRaw(toRead)

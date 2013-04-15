@@ -10,8 +10,10 @@ class Index(object):
 
     def parseExtent(self, vd, dataSrc, extent, parent):
         sector = dataSrc.getSectorHeadBytes(*extent)
-        while sector.bytesLeft() > 0:
+        while True:
             sector.skipZeroes()
+            if not sector.bytesLeft():
+                break
             yield self.getFsObject(vd, sector, parent)
 
     def getFsObject(self, vd, sec, parentDir=None):
