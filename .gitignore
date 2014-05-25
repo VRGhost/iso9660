@@ -3,5 +3,7 @@
 .*
 *.sublime-workspace
 *.py?
-build/
-dist/
+/_tmp/*
+distribute*.tar.gz
+*.sqlite_db
+celerybeat-schedule
